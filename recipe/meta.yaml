@@ -10,12 +10,13 @@ source:
   sha256: a5118aea198219f59bc04eab0a2099341cecac76a7029c2aef72141645e7596a
 
 build:
-  number: 0
+  number: 1
   skip: True  # [win]
 
 requirements:
   build:
     - {{ compiler('c') }}
+    - {{ stdlib("c") }}
     - make
 
 test:
@@ -24,7 +25,7 @@ test:
 
 about:
   home: https://linux.die.net/man/1/makedepf90
-  license: GPL-2.0
+  license: GPL-2.0-only
   license_family: GPL
   license_file: COPYING
   summary: 'Creates Makefile dependency list for Fortran source files.'
