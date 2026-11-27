@@ -16,6 +16,7 @@ build:
 requirements:
   build:
     - {{ compiler('c') }}
+    - {{ stdlib("c") }}
     - make
 
 test:
@@ -24,7 +25,7 @@ test:
 
 about:
   home: https://linux.die.net/man/1/makedepf90
-  license: GPL-2.0
+  license: GPL-2.0-only
   license_family: GPL
   license_file: COPYING
   summary: 'Creates Makefile dependency list for Fortran source files.'
