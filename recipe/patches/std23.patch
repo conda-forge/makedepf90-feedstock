@@ -1,0 +1,26 @@
+Description: Use stdbool now that gcc-15 uses std=c23
+Author: Alastair McKinstry <mckinstry@debian.org>
+Bug-Origin: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1097360
+Forwarded: no
+Last-Updated: 2025-09-05
+
+--- a/global.h
++++ b/global.h
+@@ -22,6 +22,8 @@
+ #ifndef GLOBAL_H_
+ #define GLOBAL_H_
+ 
++#include <stdbool.h>
++
+ #include "config.h"
+ #include "list.h"
+ 
+@@ -52,8 +54,6 @@
+ #define RULE_LENGTH 1024
+ #define LINK_RULE_DEFAULT "$(FC) -o $@ $(FFLAGS) $(LDFLAGS) $(FOBJ) $(LIBS)"
+ 
+-typedef enum {false = 0, true = 1} bool;
+-
+ typedef enum {SUFFIX, FIXED, FREE, UNKNOWN} SourceFmt;
+ 
+ typedef struct {

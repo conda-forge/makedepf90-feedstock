@@ -1,0 +1,20 @@
+From: Santiago Vila <sanvila@debian.org>
+Subject: Drop conflicting .y.h rule to avoid race condition
+Bug-Debian: https://bugs.debian.org/1049692
+Last-Updated: 2026-01-01
+
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -78,12 +78,6 @@
+ 	mv y.tab.c $@
+ 	mv y.tab.h $*.h
+ 
+-.y.h: 
+-	$(YACC) -d $(YFLAGS) $<
+-	mv y.tab.h $@
+-	mv y.tab.c $*.c
+-
+-
+ $(PROG): $(OBJ)
+ 	$(CC) -o $@ $(CPPFLAGS) $(CFLAGS) $(OBJ) $(LIBOBJS) $(LIBS)
+ 

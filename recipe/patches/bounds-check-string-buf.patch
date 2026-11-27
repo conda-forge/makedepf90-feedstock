@@ -1,0 +1,26 @@
+Description: Bounds-check the string-literal buffer to prevent a global buffer overflow
+ The lexer copies every character of a Fortran string/character literal into
+ the fixed 8192-byte global buffer string_buf with no bounds check
+ (lexer.l rule for <str_sq,str_dq>.).  A literal longer than MAX_STRING_LEN,
+ including one assembled across continuation lines, writes past the buffer and
+ corrupts adjacent globals.  Reproduced with AddressSanitizer:
+ global-buffer-overflow write at lexer.l, yylex.
+ .
+ The buffer only feeds a debug print; string contents never affect the emitted
+ dependencies (module/use names are lexed as identifiers), so silently dropping
+ the overflow characters is safe and leaves dependency output unchanged.
+Author: Ash Pera <ashley.pera@noaa.gov>
+Forwarded: no
+Last-Updated: 2026-11-27
+--- a/lexer.l
++++ b/lexer.l
+@@ -89,7 +89,8 @@
+                     RETURN(UNTERMINATED_STRING);
+                 }
+ 
+-<str_sq,str_dq>. { *string_buf_ptr++ = yytext[0]; }
++<str_sq,str_dq>. { if (string_buf_ptr < string_buf + MAX_STRING_LEN - 1)
++                      *string_buf_ptr++ = yytext[0]; }
+ 
+ 
+ 
