@@ -5,7 +5,7 @@ Feedstock license: [BSD-3-Clause](https://github.com/conda-forge/makedepf90-feed
 
 Home: https://linux.die.net/man/1/makedepf90
 
-Package license: GPL-2.0
+Package license: GPL-2.0-only
 
 Summary: Creates Makefile dependency list for Fortran source files.
 
