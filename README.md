@@ -3,13 +3,13 @@ About makedepf90-feedstock
 
 Feedstock license: [BSD-3-Clause](https://github.com/conda-forge/makedepf90-feedstock/blob/main/LICENSE.txt)
 
-Home: https://linux.die.net/man/1/makedepf90
+Home: https://salsa.debian.org/science-team/makedepf90
 
 Package license: GPL-2.0-only
 
 Summary: Creates Makefile dependency list for Fortran source files.
 
-Documentation: https://linux.die.net/man/1/makedepf90
+Development: https://salsa.debian.org/science-team/makedepf90
 
 Current build status
 ====================
@@ -215,4 +215,5 @@ Feedstock Maintainers
 =====================
 
 * [@kburns](https://github.com/kburns/)
+* [@pera-noaa](https://github.com/pera-noaa/)
 

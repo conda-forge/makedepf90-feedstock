@@ -1,0 +1,38 @@
+Description: Size the expanded -r/-R rule buffer from its inputs to prevent a heap overflow
+ expand_rule() expands a -r or -R rule into a fixed RULE_LENGTH (1024) byte
+ heap buffer.  The length check in main.c only tests the raw argument of
+ the separate "-r RULE" form: the joined "-rRULE" form and -R are
+ not checked, and each %f expands to the source file name, so a short rule can
+ still overflow.  Reproduced with AddressSanitizer: heap-buffer-overflow write
+ at utils.c, expand_rule.
+ .
+ The buffer is now allocated for the rule with every '%' expanded to the source
+ name.  Output is unchanged; the existing RULE_LENGTH check is left in place.
+Author: Ash Pera <ashley.pera@noaa.gov>
+Bug-Debian: https://bugs.debian.org/1155614
+Forwarded: https://bugs.debian.org/1155614
+Last-Updated: 2026-11-28
+--- a/utils.c
++++ b/utils.c
+@@ -124,9 +124,8 @@ char *remove_citation(const char *s)
+ char *expand_rule(const char *r, const char *srcfile)
+ {
+     char *rule;
+-    int i, j, k, rlen, slen;
++    int i, j, k, rlen, slen, npct;
+ 
+-    rule = (char *)xmalloc(RULE_LENGTH*sizeof(char));
+     rlen = strlen(r);
+ 
+     /* set slen = length of srcfile without suffix */
+@@ -135,6 +134,10 @@ char *expand_rule(const char *r, const char *srcfile)
+     /* If there was no suffix, set slen = strlen(srcfile) */
+     if (slen == 0) slen = strlen(srcfile);
+ 
++    /* Room for the tab, the rule, every '%' expanded to srcfile, and NUL */
++    for (i = npct = 0; i < rlen; i++)  if (r[i] == '%')  npct++;
++    rule = (char *)xmalloc(rlen + npct*slen + 2);
++
+     rule[0] = '\t';
+     k = 1;
+     for (i = 0; i < rlen; i++) {

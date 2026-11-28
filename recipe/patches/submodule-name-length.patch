@@ -1,0 +1,35 @@
+Description: Copy the submodule name for %s/%S using its own length
+ The %s and %S cases of modfile_name() loop while modulename[j] is non-zero but
+ copy submodulename[j].  For a submodule the module name is the parent's, so a
+ parent name longer than the submodule name reads past the submodule name, and
+ a shorter one truncates it.  Reproduced with AddressSanitizer:
+ heap-buffer-overflow read at modfile_name.c.
+ .
+ Only formats using %s or %S are affected; the default submodule format "%f.o"
+ is not.  For those formats -S output changes where the name was truncated or
+ overrun: a submodule mdf_s01 of module mdf gave mdf@mdf.smod for "%m@%s.smod",
+ and now gives mdf@mdf_s01.smod.
+Author: Ash Pera <ashley.pera@noaa.gov>
+Bug-Debian: https://bugs.debian.org/1155614
+Forwarded: https://bugs.debian.org/1155614
+Last-Updated: 2026-11-28
+--- a/modfile_name.c
++++ b/modfile_name.c
+@@ -74,7 +74,7 @@ char *modfile_name (const char *modulename,
+ 		    if (!submodulename) {
+ 		      warning("Submodule component not defined in this context");
+ 		    } else  {
+-		      for (j = 0; modulename[j]; j++)
++		      for (j = 0; submodulename[j]; j++)
+                         modfile[mi++] = tolower (submodulename[j]);
+ 		    }
+ 		    break;
+@@ -82,7 +82,7 @@ char *modfile_name (const char *modulename,
+ 		    if (!submodulename) {
+ 		      warning("Submodule component not defined in this context");
+ 		    } else  {
+-		      for (j = 0; modulename[j]; j++)
++		      for (j = 0; submodulename[j]; j++)
+                         modfile[mi++] = toupper (submodulename[j]);
+ 		    }
+                     break;

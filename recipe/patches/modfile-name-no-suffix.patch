@@ -1,0 +1,29 @@
+Description: Do not scan before the module-file name buffer when %f has no suffix
+ After copying the source file name for %f, modfile_name() searches backwards
+ for '.' to strip the suffix with no lower bound.  If no '.' has been written
+ (for example a source file named without a suffix), it reads, and then writes,
+ before the start of the heap buffer.  Reproduced with AddressSanitizer:
+ heap-buffer-overflow one byte before the buffer at modfile_name.c.
+ .
+ The scan now stops at the start of the buffer, and with no '.' the whole name
+ is kept: "-m %f.mod" on a source file "nosuf" gave "nosuf" and now gives
+ "nosuf.mod".  A '.' earlier in the buffer (in the -m prefix or a directory
+ name) is still taken for the suffix, as before.
+Author: Ash Pera <ashley.pera@noaa.gov>
+Bug-Debian: https://bugs.debian.org/1155614
+Forwarded: https://bugs.debian.org/1155614
+Last-Updated: 2026-11-28
+--- a/modfile_name.c
++++ b/modfile_name.c
+@@ -58,8 +58,9 @@ char *modfile_name (const char *modulename,
+                     for (j = 0; filename[j]; j++)
+                         modfile[mi++] = filename[j];
+ 
+-                    /* Skip the file name extension */
+-                    for (mi--; modfile[mi] != '.'; mi--);
++                    /* Skip the file name extension, if there is one */
++                    for (j = mi - 1; j >= 0 && modfile[j] != '.'; j--);
++                    if (j >= 0)  mi = j;
+                     break;
+                 case 'm':
+                     for (j = 0; modulename[j]; j++)

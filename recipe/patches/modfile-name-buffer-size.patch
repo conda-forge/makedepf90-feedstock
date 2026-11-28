@@ -1,0 +1,34 @@
+Description: Size the module-file name buffer from its inputs to prevent a heap overflow
+ modfile_name() expands the -m/-s format into a fixed MODFILE_NAME_LEN (256)
+ byte heap buffer with no bound.  A module name, submodule name or source path
+ longer than about 255 characters (the default format is "%f.o", so a long
+ source path is enough), or a long -m/-s format, writes past the buffer.
+ Reproduced with AddressSanitizer: heap-buffer-overflow write at
+ modfile_name.c, modfile_name.
+ .
+ The buffer is now allocated with room for every format character expanding to
+ the longest of the three names, so no name is truncated.  Output is unchanged.
+Author: Ash Pera <ashley.pera@noaa.gov>
+Bug-Debian: https://bugs.debian.org/1155613
+Forwarded: https://bugs.debian.org/1155613
+Last-Updated: 2026-11-27
+--- a/modfile_name.c
++++ b/modfile_name.c
+@@ -39,10 +39,16 @@ char *modfile_name (const char *modulename,
+     char *modfile;
+     const char *fmt;
+     int mi = 0, j, i;
++    size_t maxarg;
+ 
+     fmt = (submodulename) ?  options.submodfile_fmt : options.modfile_fmt;
+ 
+-    modfile = (char *)xmalloc (sizeof(char)*MODFILE_NAME_LEN);
++    /* No format character expands to more than the longest name. */
++    maxarg = strlen(filename);
++    if (strlen(modulename) > maxarg)  maxarg = strlen(modulename);
++    if (submodulename && strlen(submodulename) > maxarg)
++        maxarg = strlen(submodulename);
++    modfile = (char *)xmalloc (strlen(fmt) * (maxarg + 1) + 1);
+ 
+     for (i = 0; fmt[i]; i++) {
+         if (fmt[i] == '%') {

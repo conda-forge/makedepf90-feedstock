@@ -1,0 +1,32 @@
+Description: Test the index before reading in replace_suffix() and set_path()
+ Both functions scan backwards with "while (filename[n] != c && n >= 0)",
+ which reads filename[-1] before testing n when the name has no '.' or '/'.
+ With -b DIR this happens for every object and module name without a
+ directory part.  Reproduced with AddressSanitizer: heap-buffer-overflow read
+ one byte before the buffer at utils.c, set_path.
+ .
+ The operands are swapped.  Output is unchanged.
+Author: Ash Pera <ashley.pera@noaa.gov>
+Bug-Debian: https://bugs.debian.org/1155613
+Forwarded: https://bugs.debian.org/1155613
+Last-Updated: 2026-11-27
+--- a/utils.c
++++ b/utils.c
+@@ -52,7 +52,7 @@ char *replace_suffix(const char *filename, const char *new_suffix)
+ 
+     /* Search for last '.' in filename */
+     fl = n = strlen(filename);
+-    while (filename[n] != '.' && n >= 0)  n--;
++    while (n >= 0 && filename[n] != '.')  n--;
+ 
+     if (n == -1) {
+         /* if there was no '.' */
+@@ -85,7 +85,7 @@ char *set_path(const char *filename, const char *path, const bool mirror)
+ 
+     fl = n = strlen(filename);
+     if( !mirror )
+-        while (filename[n] != '/' && n >= 0)  n--;
++        while (n >= 0 && filename[n] != '/')  n--;
+     else
+         n=-1;
+     nl = fl - n - 1;

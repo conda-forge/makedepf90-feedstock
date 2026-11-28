@@ -1,16 +1,35 @@
 {% set name = "makedepf90" %}
-{% set version = "2.8.8" %}
+{% set version = "3.0.1" %}
 
 package:
   name: {{ name|lower }}
   version: {{ version }}
 
 source:
-  url: http://archive.ubuntu.com/ubuntu/pool/universe/m/{{ name }}/{{ name }}_{{ version }}.orig.tar.gz
-  sha256: a5118aea198219f59bc04eab0a2099341cecac76a7029c2aef72141645e7596a
+  # Second URL is snapshot.debian.org's permanent hash-addressed copy, kept as a
+  # mirror because the pool drops an .orig tarball when a new upstream lands.
+  url:
+    - https://deb.debian.org/debian/pool/main/m/{{ name }}/{{ name }}_{{ version }}.orig.tar.xz
+    - https://snapshot.debian.org/file/23046d97498c530a7237f7aac237d25c53d4e41a
+  sha256: a11601ea14ad793f23fca9c7e7df694b6337f962ccc930d995d72e172edf29ee
+  patches:
+    # From Debian (science-team/makedepf90), which carries upstream now.
+    - patches/std23.patch        # FTBFS under C23 (GCC 15 default): use <stdbool.h>
+    - patches/Makefile.in.patch  # drop duplicate .y.h rule (parallel-make race)
+    # Out-of-bounds fixes, reported upstream as Debian bugs #1155574, #1155613, #1155614
+    # (include-at-eof-no-newline: not yet).
+    - patches/bounds-check-string-buf.patch       # long string literal
+    - patches/bound-ifdef-nesting.patch           # #if nesting > 19 levels
+    - patches/include-at-eof-no-newline.patch     # last line "include" with no newline
+    - patches/modfile-name-buffer-size.patch      # source path > 255 chars
+    - patches/modfile-name-no-suffix.patch        # %f on a name with no '.'
+    - patches/submodule-name-length.patch         # %s/%S in -s
+    - patches/modfile-fmt-trailing-percent.patch  # -m/-s format ending in '%'
+    - patches/expand-rule-buffer-size.patch       # long -r/-R rule
+    - patches/path-scan-bounds.patch              # -b DIR
 
 build:
-  number: 1
+  number: 0
   skip: True  # [win]
 
 requirements:
@@ -18,18 +37,22 @@ requirements:
     - {{ compiler('c') }}
     - {{ stdlib("c") }}
     - make
+    - flex
+    - bison
 
 test:
   commands:
-    - test -f $PREFIX/bin/makedepf90
+    # Full test (binary present + submodule-dependency regression guard) is in
+    # recipe/run_test.sh, which conda-build runs automatically.
+    - test -f ${PREFIX}/bin/makedepf90
 
 about:
-  home: https://linux.die.net/man/1/makedepf90
+  home: https://salsa.debian.org/science-team/makedepf90
   license: GPL-2.0-only
   license_family: GPL
   license_file: COPYING
   summary: 'Creates Makefile dependency list for Fortran source files.'
-  doc_url: https://linux.die.net/man/1/makedepf90
+  dev_url: https://salsa.debian.org/science-team/makedepf90
 
 extra:
   recipe-maintainers:

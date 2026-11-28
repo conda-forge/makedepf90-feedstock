@@ -1,0 +1,24 @@
+Description: Stop at a trailing '%' in the -m/-s format instead of reading past its end
+ When the -m or -s format ends in '%', modfile_name() steps onto the
+ terminating NUL, warns about an unknown modifier, and the loop increment then
+ reads past the end of the string.  Reproduced with AddressSanitizer:
+ heap-buffer-overflow read at modfile_name.c.
+ .
+ A trailing '%' now gets its own warning and ends the format.
+Author: Ash Pera <ashley.pera@noaa.gov>
+Bug-Debian: https://bugs.debian.org/1155614
+Forwarded: https://bugs.debian.org/1155614
+Last-Updated: 2026-11-27
+--- a/modfile_name.c
++++ b/modfile_name.c
+@@ -89,6 +89,10 @@ char *modfile_name (const char *modulename,
+                 case '%':
+                     modfile[mi++] = '%';
+                     break;
++                case '\0':
++                    warning ("Trailing '%%' in modfile format '%s'", fmt);
++                    i--;  /* so the loop stops at the NUL */
++                    break;
+                 default:
+                     warning ("Unknown modifier '%%%c' in modfile format '%s'",
+                              fmt[i], fmt);
