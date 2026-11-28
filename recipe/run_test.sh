@@ -19,7 +19,8 @@ printf 'submodule (MDF) sub\ncontains\n  module subroutine s()\n  end subroutine
 makedepf90 sub.F90 mdf.F90 | tee deps.mk
 grep -q 'sub.F90 mdf.o' deps.mk
 
-# The out-of-bounds patches: each case crashed or misbehaved before them.
+# The out-of-bounds patches. Each check fails on unpatched 3.0.1; four (nesting,
+# trailing %, -r, -b) only when it is built with ASan.
 # #if nesting past the old 20-slot stack must keep each level's state: the
 # #elif at the innermost level must stay skipped.
 { for i in $(seq 25); do echo '#if 1'; done
@@ -44,7 +45,7 @@ makedepf90 -m %f.mod "$long/x.f90" | grep -q "$long/x.mod"
 
 # A source name with no suffix, %f in the module-file name, a trailing '%'.
 printf 'module nosuf\nend module\n' > nosuf
-makedepf90 -m %f.mod nosuf > /dev/null
+makedepf90 -m %f.mod nosuf | grep -q 'nosuf.mod'
 makedepf90 -m 'x%' mdf.F90 > /dev/null
 
 # %s in -S with a submodule name longer than its parent's (was truncated).
@@ -54,3 +55,10 @@ grep -q 'mdf@mdf_s01.smod' smod.txt
 
 # A joined -rRULE (unchecked by main.c) expanding past the old 1024-byte buffer.
 makedepf90 -r"$(printf '%%f %.0s' $(seq 300))" mdf.F90 | grep -q "mdf mdf"
+
+# -b on a name with no directory part (read before the name).
+makedepf90 -b d mdf.F90 | grep -q '^d/mdf.o '
+
+# An include name past the 8192-byte string buffer.
+printf "program q\ninclude '%s'\nend\n" "$(printf 'z%.0s' $(seq 9000))" > strinc.f90
+makedepf90 strinc.f90 > /dev/null

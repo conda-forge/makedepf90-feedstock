@@ -3,7 +3,8 @@ Description: Grow the preprocessor nesting stack instead of overflowing it
  $ifndef) increments skip_i unconditionally and then indexes skip_to_end[skip_i]
  (find_dep.y).  Nesting deeper than 19 levels writes past the array.  skip_i is
  also not reset between files, so unclosed conditionals accumulate across a
- command line.  At 300 levels an unpatched build spins without exiting.
+ command line.  At 300 levels an unpatched build crashes, or for "#if 1" never
+ exits.
  Reproduced with UBSan: "index 20 out of bounds for type
  'bool[20]'" at find_dep.y, yyparse.
  .
