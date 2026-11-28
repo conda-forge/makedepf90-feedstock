@@ -16,9 +16,11 @@ source:
     # From Debian (science-team/makedepf90), which carries upstream now.
     - patches/std23.patch        # FTBFS under C23 (GCC 15 default): use <stdbool.h>
     - patches/Makefile.in.patch  # drop duplicate .y.h rule (parallel-make race)
-    # Out-of-bounds fixes, reported upstream as Debian bugs #1155574, #1155613, #1155614.
+    # Out-of-bounds fixes, reported upstream as Debian bugs #1155574, #1155613, #1155614
+    # (include-at-eof-no-newline: not yet).
     - patches/bounds-check-string-buf.patch       # long string literal
     - patches/bound-ifdef-nesting.patch           # #if nesting > 19 levels
+    - patches/include-at-eof-no-newline.patch     # last line "include" with no newline
     - patches/modfile-name-buffer-size.patch      # source path > 255 chars
     - patches/modfile-name-no-suffix.patch        # %f on a name with no '.'
     - patches/submodule-name-length.patch         # %s/%S in -s

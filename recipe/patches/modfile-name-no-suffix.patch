@@ -5,13 +5,13 @@ Description: Do not scan before the module-file name buffer when %f has no suffi
  before the start of the heap buffer.  Reproduced with AddressSanitizer:
  heap-buffer-overflow one byte before the buffer at modfile_name.c.
  .
- The scan now stops at the start of the buffer; with no '.', the whole name is
- kept, as replace_suffix() already does.  Output is unchanged whenever a '.' is
- present.
+ The scan now stops at the start of the buffer.  Output is unchanged: with no
+ '.' in the buffer the whole name is kept, and a '.' earlier in the buffer (in
+ the -m prefix or a directory name) is still taken for the suffix, as before.
 Author: Ash Pera <ashley.pera@noaa.gov>
 Bug-Debian: https://bugs.debian.org/1155614
 Forwarded: https://bugs.debian.org/1155614
-Last-Updated: 2026-11-27
+Last-Updated: 2026-11-28
 --- a/modfile_name.c
 +++ b/modfile_name.c
 @@ -58,8 +58,9 @@ char *modfile_name (const char *modulename,

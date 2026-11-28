@@ -1,0 +1,24 @@
+Description: Fix an out-of-bounds write when a file ends in an include with no newline
+ At the end of the outermost file, the <<EOF>> rule decrements incl_buff to -1.
+ If the last line has no trailing newline, it returns EOSTMT without restoring
+ incl_buff, so an "include" statement on that line makes lex_include_file()
+ write include_stack[-1] and line_num_stack[-1] (lexer.l).  Reproduced with
+ UBSan: "index -1 out of bounds for type 'YY_BUFFER_STATE[15]'"; without
+ sanitizers makedepf90 dies with SIGBUS or SIGSEGV:
+   printf "module m\nend module m\ninclude 'inc.h'" > main.f90
+   makedepf90 main.f90
+ .
+ Reset incl_buff to 0 before returning, as the other branch already does.
+Author: Ash Pera <ashley.pera@noaa.gov>
+Forwarded: no
+Last-Updated: 2026-11-28
+--- a/lexer.l
++++ b/lexer.l
+@@ -155,6 +155,7 @@
+                             yyterminate();
+                         } else {
+                             /* "EOF without \n first" cases. */
++                            incl_buff = 0;
+                             RETURN(EOSTMT);
+                         }
+                     } else {

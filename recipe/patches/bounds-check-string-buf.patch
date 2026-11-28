@@ -6,13 +6,13 @@ Description: Bounds-check the string-literal buffer to prevent a global buffer o
  corrupts adjacent globals.  Reproduced with AddressSanitizer:
  global-buffer-overflow write at lexer.l, yylex.
  .
- The buffer only feeds a debug print; string contents never affect the emitted
- dependencies (module/use names are lexed as identifiers), so silently dropping
- the overflow characters is safe and leaves dependency output unchanged.
+ Characters past MAX_STRING_LEN - 1 are now dropped.  The literal is used as
+ the file name of an include line, so output changes only for an include name
+ over 8191 characters, longer than any path the system can open.
 Author: Ash Pera <ashley.pera@noaa.gov>
 Bug-Debian: https://bugs.debian.org/1155574
 Forwarded: https://bugs.debian.org/1155574
-Last-Updated: 2026-11-27
+Last-Updated: 2026-11-28
 --- a/lexer.l
 +++ b/lexer.l
 @@ -89,7 +89,8 @@

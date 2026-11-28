@@ -1,73 +1,90 @@
-Description: Bound the preprocessor nesting stack to prevent a global buffer overflow
+Description: Grow the preprocessor nesting stack instead of overflowing it
  skip_to_end[] has 20 slots, but every #if/#ifdef/#ifndef (and $if/$ifdef/
  $ifndef) increments skip_i unconditionally and then indexes skip_to_end[skip_i]
  (find_dep.y).  Nesting deeper than 19 levels writes past the array.  skip_i is
  also not reset between files, so unclosed conditionals accumulate across a
- command line.  Reproduced with UBSan: "index 20 out of bounds for type
+ command line.  At 300 levels an unpatched build spins without exiting.
+ Reproduced with UBSan: "index 20 out of bounds for type
  'bool[20]'" at find_dep.y, yyparse.
  .
- Levels beyond the array now share the last slot.  That changes behaviour only
- where the old code had undefined behaviour; dependency output for nesting of
- 19 or fewer levels is unchanged.
+ The stack now grows on demand, so every nesting level keeps its own slot and
+ dependency output is the same as it was for nesting within the old limit.
 Author: Ash Pera <ashley.pera@noaa.gov>
 Bug-Debian: https://bugs.debian.org/1155613
 Forwarded: https://bugs.debian.org/1155613
-Last-Updated: 2026-11-27
+Last-Updated: 2026-11-28
 --- a/find_dep.y
 +++ b/find_dep.y
-@@ -44,7 +44,10 @@ static List *macrolist;
+@@ -44,13 +44,27 @@
  static char *filestack[INCLUDE_RECURSION_LIMIT+1];
  static int filestack_i;
  static int pp_ignore;    /* In 'false'-branch of a pre-processor 'if' */
 -static bool skip_to_end[20];
-+#define SKIP_DEPTH 20
-+static bool skip_to_end[SKIP_DEPTH];
-+/* Nesting deeper than SKIP_DEPTH shares the last slot instead of overflowing. */
-+#define SKIP_TO_END skip_to_end[skip_i < SKIP_DEPTH ? skip_i : SKIP_DEPTH - 1]
++static bool *skip_to_end;  /* One per #if nesting level; grown on demand. */
++static int skip_cap;
  static int skip_i;
  static bool in_interface = false;
  
-@@ -191,7 +194,7 @@ keyword_stmt: WORD EOSTMT {
+ int yyerror(const char *s);
+ 
+ static int modcmp(const void *m1, const void *m2);
++
++/* The skip_to_end slot of the current nesting level, growing the stack as
++ * needed: a fixed size either overflows or merges levels. */
++static bool *skip_slot(void)
++{
++    if (skip_i >= skip_cap) {
++        int n = skip_i + 32;
++        skip_to_end = xrealloc(skip_to_end, n * sizeof *skip_to_end);
++        memset(skip_to_end + skip_cap, 0, (n - skip_cap) * sizeof *skip_to_end);
++        skip_cap = n;
++    }
++    return &skip_to_end[skip_i];
++}
+ SourceFmt get_format(const char *filename);
+ void handle_include(const char *incfile);
+ 
+@@ -191,7 +205,7 @@
          else if (!list_find(macrolist, mac, &macrocmp))
              pp_ignore = 1;
          else
 -            skip_to_end[skip_i] = true;
-+            SKIP_TO_END = true;
++            *skip_slot() = true;
  
          macro_free(mac);
      }
-@@ -207,7 +210,7 @@ keyword_stmt: WORD EOSTMT {
+@@ -207,7 +221,7 @@
          if (list_find(macrolist, mac, &macrocmp))
              pp_ignore = 1;
          else
 -            skip_to_end[skip_i] = true;
-+            SKIP_TO_END = true;
++            *skip_slot() = true;
  
          macro_free(mac);
      }
-@@ -217,21 +220,21 @@ keyword_stmt: WORD EOSTMT {
+@@ -217,21 +231,21 @@
           * following #else or #elif:s (ie. no 'skip_to_end'). */
          skip_i++;
          if (pp_ignore)  pp_ignore++;
 -        skip_to_end[skip_i] = false;
-+        SKIP_TO_END = false;
++        *skip_slot() = false;
      }
      | elif other EOSTMT {
          /* Allways taken unless an #ifdef or #ifndef-branch has been taken
           * allready. */
 -        if (skip_to_end[skip_i] && pp_ignore == 0)  pp_ignore = 1;
-+        if (SKIP_TO_END && pp_ignore == 0)  pp_ignore = 1;
++        if (*skip_slot() && pp_ignore == 0)  pp_ignore = 1;
      }
      | else other EOSTMT {
 -        if (pp_ignore == 1 && skip_to_end[skip_i] == false)  
-+        if (pp_ignore == 1 && SKIP_TO_END == false)  
++        if (pp_ignore == 1 && *skip_slot() == false)  
              pp_ignore = 0;
          else if (pp_ignore == 0)
              pp_ignore = 1;
      }
      | endif other EOSTMT {
 -        skip_to_end[skip_i] = false;
-+        SKIP_TO_END = false;
++        *skip_slot() = false;
          if (skip_i > 0)  skip_i--;
          if (pp_ignore) pp_ignore--;
      }

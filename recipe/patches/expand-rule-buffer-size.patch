@@ -1,6 +1,6 @@
 Description: Size the expanded -r/-R rule buffer from its inputs to prevent a heap overflow
  expand_rule() expands a -r or -R rule into a fixed RULE_LENGTH (1024) byte
- heap buffer.  The length check added in 2.8.9 only tests the raw argument of
+ heap buffer.  The length check in main.c only tests the raw argument of
  the separate "-r RULE" form: the joined "-rRULE" form and -R are
  not checked, and each %f expands to the source file name, so a short rule can
  still overflow.  Reproduced with AddressSanitizer: heap-buffer-overflow write
@@ -11,7 +11,7 @@ Description: Size the expanded -r/-R rule buffer from its inputs to prevent a he
 Author: Ash Pera <ashley.pera@noaa.gov>
 Bug-Debian: https://bugs.debian.org/1155614
 Forwarded: https://bugs.debian.org/1155614
-Last-Updated: 2026-11-27
+Last-Updated: 2026-11-28
 --- a/utils.c
 +++ b/utils.c
 @@ -124,9 +124,8 @@ char *remove_citation(const char *s)
