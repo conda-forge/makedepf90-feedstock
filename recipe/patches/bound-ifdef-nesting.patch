@@ -1,0 +1,73 @@
+Description: Bound the preprocessor nesting stack to prevent a global buffer overflow
+ skip_to_end[] has 20 slots, but every #if/#ifdef/#ifndef (and $if/$ifdef/
+ $ifndef) increments skip_i unconditionally and then indexes skip_to_end[skip_i]
+ (find_dep.y).  Nesting deeper than 19 levels writes past the array.  skip_i is
+ also not reset between files, so unclosed conditionals accumulate across a
+ command line.  Reproduced with UBSan: "index 20 out of bounds for type
+ 'bool[20]'" at find_dep.y, yyparse.
+ .
+ Levels beyond the array now share the last slot.  That changes behaviour only
+ where the old code had undefined behaviour; dependency output for nesting of
+ 19 or fewer levels is unchanged.
+Author: Ash Pera <ashley.pera@noaa.gov>
+Bug-Debian: https://bugs.debian.org/1155613
+Forwarded: https://bugs.debian.org/1155613
+Last-Updated: 2026-11-27
+--- a/find_dep.y
++++ b/find_dep.y
+@@ -44,7 +44,10 @@ static List *macrolist;
+ static char *filestack[INCLUDE_RECURSION_LIMIT+1];
+ static int filestack_i;
+ static int pp_ignore;    /* In 'false'-branch of a pre-processor 'if' */
+-static bool skip_to_end[20];
++#define SKIP_DEPTH 20
++static bool skip_to_end[SKIP_DEPTH];
++/* Nesting deeper than SKIP_DEPTH shares the last slot instead of overflowing. */
++#define SKIP_TO_END skip_to_end[skip_i < SKIP_DEPTH ? skip_i : SKIP_DEPTH - 1]
+ static int skip_i;
+ static bool in_interface = false;
+ 
+@@ -191,7 +194,7 @@ keyword_stmt: WORD EOSTMT {
+         else if (!list_find(macrolist, mac, &macrocmp))
+             pp_ignore = 1;
+         else
+-            skip_to_end[skip_i] = true;
++            SKIP_TO_END = true;
+ 
+         macro_free(mac);
+     }
+@@ -207,7 +210,7 @@ keyword_stmt: WORD EOSTMT {
+         if (list_find(macrolist, mac, &macrocmp))
+             pp_ignore = 1;
+         else
+-            skip_to_end[skip_i] = true;
++            SKIP_TO_END = true;
+ 
+         macro_free(mac);
+     }
+@@ -217,21 +220,21 @@ keyword_stmt: WORD EOSTMT {
+          * following #else or #elif:s (ie. no 'skip_to_end'). */
+         skip_i++;
+         if (pp_ignore)  pp_ignore++;
+-        skip_to_end[skip_i] = false;
++        SKIP_TO_END = false;
+     }
+     | elif other EOSTMT {
+         /* Allways taken unless an #ifdef or #ifndef-branch has been taken
+          * allready. */
+-        if (skip_to_end[skip_i] && pp_ignore == 0)  pp_ignore = 1;
++        if (SKIP_TO_END && pp_ignore == 0)  pp_ignore = 1;
+     }
+     | else other EOSTMT {
+-        if (pp_ignore == 1 && skip_to_end[skip_i] == false)  
++        if (pp_ignore == 1 && SKIP_TO_END == false)  
+             pp_ignore = 0;
+         else if (pp_ignore == 0)
+             pp_ignore = 1;
+     }
+     | endif other EOSTMT {
+-        skip_to_end[skip_i] = false;
++        SKIP_TO_END = false;
+         if (skip_i > 0)  skip_i--;
+         if (pp_ignore) pp_ignore--;
+     }

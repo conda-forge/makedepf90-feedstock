@@ -10,7 +10,8 @@ Description: Bounds-check the string-literal buffer to prevent a global buffer o
  dependencies (module/use names are lexed as identifiers), so silently dropping
  the overflow characters is safe and leaves dependency output unchanged.
 Author: Ash Pera <ashley.pera@noaa.gov>
-Forwarded: no
+Bug-Debian: https://bugs.debian.org/1155574
+Forwarded: https://bugs.debian.org/1155574
 Last-Updated: 2026-11-27
 --- a/lexer.l
 +++ b/lexer.l

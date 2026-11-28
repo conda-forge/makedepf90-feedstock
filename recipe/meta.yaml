@@ -16,8 +16,15 @@ source:
     # From Debian (science-team/makedepf90), which carries upstream now.
     - patches/std23.patch        # FTBFS under C23 (GCC 15 default): use <stdbool.h>
     - patches/Makefile.in.patch  # drop duplicate .y.h rule (parallel-make race)
-    # Reported upstream as Debian bug #1155574.
-    - patches/bounds-check-string-buf.patch  # out-of-bounds write on long string literal
+    # Out-of-bounds fixes, reported upstream as Debian bugs #1155574, #1155613, #1155614.
+    - patches/bounds-check-string-buf.patch       # long string literal
+    - patches/bound-ifdef-nesting.patch           # #if nesting > 19 levels
+    - patches/modfile-name-buffer-size.patch      # source path > 255 chars
+    - patches/modfile-name-no-suffix.patch        # %f on a name with no '.'
+    - patches/submodule-name-length.patch         # %s/%S in -s
+    - patches/modfile-fmt-trailing-percent.patch  # -m/-s format ending in '%'
+    - patches/expand-rule-buffer-size.patch       # long -r/-R rule
+    - patches/path-scan-bounds.patch              # -b DIR
 
 build:
   number: 0
